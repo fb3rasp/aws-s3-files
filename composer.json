@@ -4,12 +4,6 @@
     "type": "silverstripe-module",
     "license": "BSD-3-Clause",
     "keywords": ["silverstripe","formfields","files","AWS","S3","cloud"],
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/fb3rasp/silverstripe-omnipay.git"
-        }
-    ],
     "require": {
         "php": ">=5.3.2",
         "silverstripe/framework": "~3.1",
