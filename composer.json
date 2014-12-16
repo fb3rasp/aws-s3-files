@@ -7,7 +7,7 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/fb3rasp/silverstripe-omnipay.git"
+            "url": "https://github.com/fb3rasp/aws-s3-files.git"
         }
     ],
     "require": {
