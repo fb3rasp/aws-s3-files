@@ -1,0 +1,9 @@
+---
+Name: aws-s3
+After: cms
+---
+AWS_S3File:
+    default_bucket: ''
+
+    access_key: ''
+    secret_key: ''
