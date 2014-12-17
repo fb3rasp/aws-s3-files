@@ -84,5 +84,56 @@ class AWS_S3File extends DataObject
         }
         return true;
     }
+
+    /**
+     * Wrapper to get extension of the filename only.
+     *
+     * @return string
+     */
+    public function getExtension()
+    {
+        return File::get_file_extension($this->getField('Name'));
+    }
+
+    /**
+     * Returns path to the icon image.
+     *
+     * If checks if the extension is defined in the module and use specific icons and fails
+     * over to framework if no image do exist.
+     *
+     * @return string
+     */
+    public function Icon()
+    {
+        $path = Config::inst()->get('AWS_S3File','icons_path');
+
+        $ext = strtolower($this->getExtension());
+
+        //
+        // Find an icon symbol in the defined app-icon folder. If not available fail over to
+        // framework icons. If that fails, too, use the generic icon from framework.
+        if(!Director::fileExists($path."/{$ext}_32.gif"))
+        {
+            $ext = File::get_app_category($this->getExtension());
+        }
+        if (Director::fileExists($path."{$ext}_32.gif"))
+        {
+            return $path."{$ext}_32.gif";
+        }
+
+        //
+        // taken from File.Icon()
+        $ext = strtolower($this->getExtension());
+        
+        if(!Director::fileExists(FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif")) {
+            $ext = File::get_app_category($this->getExtension());
+        }
+
+        if(!Director::fileExists(FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif")) {
+            $ext = "generic";
+        }
+
+        return FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif";
+    }
 }
 
