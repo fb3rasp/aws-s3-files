@@ -132,6 +132,13 @@ class AWS_S3Upload extends Upload
         $fileName   = basename($file);
 
         //
+        // If $this->file is null, it implies that the file updated can not be linked automatically to a relationship
+        if(!$this->file)
+        {
+            $this->file = new AWS_S3File();
+        }
+
+        //
         // if file object (AWS_S3File instance) is not set in this object, get the object from the database.
         if (!$this->file->ID && $this->replaceFile)
         {
