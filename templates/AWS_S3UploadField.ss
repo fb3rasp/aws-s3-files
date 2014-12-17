@@ -44,7 +44,7 @@
 					<b><%t UploadField.ATTACHFILE "Attach a file" %></b>
 				<% end_if %>
 				<% if $canPreviewFolder %>
-					<small>(<%t UploadField.UPLOADSINTO "saves into /{path}" path=$FolderName %>)</small>
+					<small>(<%t AWS_S3_UploadField.UPLOADSINTO "uploads into Amazon Storage /{path}" path=$FolderName %>)</small>
 				<% end_if %>
 			</label>
 			<% if $canUpload %>
