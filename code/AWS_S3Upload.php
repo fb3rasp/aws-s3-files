@@ -73,10 +73,11 @@ class AWS_S3Upload extends Upload
 
         //
         // This is to prevent it from trying to rename the file
-        $this->file->Name   = $fileName;
-        $this->file->Bucket = $bucketName;
-        $this->file->URL    = "http://{$bucketName}.s3.amazonaws.com/{$fileName}";
-        $this->file->ParentID = $bucket->ID;
+        $this->file->Name         = $fileName;
+        $this->file->Bucket       = $bucketName;
+        $this->file->URL          = "http://{$bucketName}.s3.amazonaws.com/{$fileName}";
+        $this->file->OriginalName = $tmpFile['name'];
+        $this->file->ParentID     = $bucket->ID;
         $this->file->write();
 
         $this->file->onAfterUpload();
@@ -148,7 +149,8 @@ class AWS_S3Upload extends Upload
                 array(
                     'ClassName' => $fileClass,
                     'Name' => $fileName,
-                    'ParentID' => $parentBucket ? $parentBucket->ID : 0
+                    'ParentID' => $parentBucket ? $parentBucket->ID : 0,
+                    'OriginalName' => $tmpFile['name']
                 )
             )->First();
 

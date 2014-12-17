@@ -231,12 +231,20 @@ class AWS_S3UploadField_ItemHandler extends RequestHandler
 
         // Protect against CSRF on destructive action
         $token = $this->parent->getForm()->getSecurityToken();
-        if(!$token->checkRequest($request)) return $this->httpError(400);
+        if(!$token->checkRequest($request))
+        {
+            return $this->httpError(400);
+        }
 
         // Check item permissions
         $item = $this->getItem();
-        if(!$item) return $this->httpError(404);
-        if(!$item->canDelete()) return $this->httpError(403);
+        if(!$item) {
+            return $this->httpError(404);
+        }
+
+        if(!$item->canDelete()) {
+            return $this->httpError(403);
+        }
 
         if ($item->deleteRemoteObject())
         {
