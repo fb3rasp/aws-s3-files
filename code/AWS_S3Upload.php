@@ -225,7 +225,7 @@ class AWS_S3Upload extends Upload
         $s3 = $this->getAWSS3Client();
         try
         {
-            $result = $s3->deleteObject(array(
+            $s3->deleteObject(array(
                 'Bucket' => $s3file->Bucket,
                 'Key' => $s3file->Name
             ));
