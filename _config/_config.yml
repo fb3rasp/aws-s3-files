@@ -7,3 +7,4 @@ AWS_S3File:
 
     access_key: ''
     secret_key: ''
+    region: ''
