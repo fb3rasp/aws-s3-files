@@ -8,3 +8,5 @@ AWS_S3File:
     access_key: ''
     secret_key: ''
     region: ''
+
+    icons_path: 'aws-s3-files/images/app_icons'
