@@ -63,7 +63,7 @@ class AWS_S3Upload extends Upload
         $bucketName = $bucket->Name;
         $s3Client   = $this->getAWSS3Client();
 
-        $result = $s3Client->upload(
+        $s3Client->upload(
             $bucketName,
             $fileName,
             fopen($tmpFile['tmp_name'], 'r+')
