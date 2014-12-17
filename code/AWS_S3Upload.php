@@ -11,17 +11,93 @@ use Aws\Common\Aws;
 
 class AWS_S3Upload extends Upload
 {
+    protected $s3Client = null;
+
+    /**
+     * Returns and if required initiates a AWS S3 Client with the credentials provided by the project configuration.
+     * Reads access_key, secret_key and region fron the AWS_S3File config.
+     *
+     * @return S3Client (@see Aws\S3\S3Client)
+     */
+    private function getAWSS3Client()
+    {
+        if (!$this->s3Client)
+        {
+            $credentials = new Credentials(
+                Config::inst()->get('AWS_S3File','access_key'),
+                Config::inst()->get('AWS_S3File','secret_key')
+            );
+
+            $aws = Aws::factory(array(
+                'credentials' => $credentials,
+                'region' => Config::inst()->get('AWS_S3File','region')
+            ));
+
+            // create s3 client object.
+            $this->s3Client =  $aws->get('s3');
+        }
+
+        return $this->s3Client;
+    }
+
+    /**
+     * This method updates the tmpFile to a AWS S3 Bucket.
+     *
+     * The credentials need to be configured by the config environment.
+     *
+     * @param $tmpFile string to file to be updated, in general the tmp file based on the form file upload.
+     * @param $fileName key, destination file name. The filename needs to be unique in the bucket
+     * @param $bucket AWS_S3Bucket instance. The instance of the bucket this file will be loaded up to.
+     *
+     * @return bool true if successful, otherwise false. See $this->errors for error description.
+     *
+     */
+    private function uploadFile($tmpFile, $fileName, $bucket)
+    {
+        if(!file_exists($tmpFile['tmp_name']))
+        {
+            $this->errors[] = _t('File.NOFILESIZE', 'Filesize is zero bytes.');
+            return false;
+        }
+
+        $bucketName = $bucket->Name;
+        $s3Client   = $this->getAWSS3Client();
+
+        $result = $s3Client->upload(
+            $bucketName,
+            $fileName,
+            fopen($tmpFile['tmp_name'], 'r+')
+        );
+
+        $this->file->ParentID = $bucket ? $bucket->ID : 0;
+
+        //
+        // This is to prevent it from trying to rename the file
+        $this->file->Name   = $fileName;
+        $this->file->Bucket = $bucketName;
+        $this->file->URL    = "http://{$bucketName}.s3.amazonaws.com/{$fileName}";
+        $this->file->ParentID = $bucket->ID;
+        $this->file->write();
+
+        $this->file->onAfterUpload();
+        $this->extend('onAfterLoad', $this->file);  // to allow extensions to e.g. create a version after an upload
+
+        return true;
+    }
 
     /**
      * Save an file passed from a form post into this object.
+     *
      * File names are filtered through {@link FileNameFilter}, see class documentation
      * on how to influence this behaviour.
      *
      * @param $tmpFile array Indexed array that PHP generated for every file it uploads.
      * @param $folderPath string Folder path relative to /assets
+     *
      * @return Boolean|string Either success or error-message.
      */
-    public function load($tmpFile, $folderPath = false) {
+    public function load($tmpFile, $folderPath = false)
+    {
         $this->clearErrors();
 
         if(!$folderPath)
@@ -47,6 +123,7 @@ class AWS_S3Upload extends Upload
             return false;
         }
 
+        // get bucket object, used to associate the objects with a bucket.
         $parentBucket = AWS_S3Bucket::find_or_make($folderPath);
 
         // Generate default filename
@@ -54,6 +131,8 @@ class AWS_S3Upload extends Upload
         $file       = $nameFilter->filter($tmpFile['name']);
         $fileName   = basename($file);
 
+        //
+        // if file object (AWS_S3File instance) is not set in this object, get the object from the database.
         if (!$this->file->ID && $this->replaceFile)
         {
             $fileClass = $this->file->class;
@@ -108,45 +187,65 @@ class AWS_S3Upload extends Upload
         }
         else
         {
+            //
             // Reset the ownerID to the current member when replacing files
             $this->file->OwnerID = (Member::currentUser() ? Member::currentUser()->ID : 0);
         }
 
-        $credentials = new Credentials(
-            Config::inst()->get('AWS_S3File','access_key'),
-            Config::inst()->get('AWS_S3File','secret_key')
-        );
+        return $this->uploadFile($tmpFile, $fileName, $parentBucket);
+    }
 
-        $bucket = Config::inst()->get('AWS_S3File','default_bucket');
 
-        $aws = Aws::factory(array(
-            'credentials' => $credentials,
-            'region' => 'eu-central-1'
-        ));
-        $s3Client = $aws->get('s3');
+    /**
+     * Returns true if the provided filename does exist in the bucket.
+     *
+     * @param $bucket
+     * @param $filename
+     * @return bool
+     */
+    public function doesObjectExist($bucket, $filename)
+    {
+        $s3     = $this->getAWSS3Client();
+        $result = $s3->doesObjectExist($bucket,$filename);
+        return $result;
+    }
 
-        if(file_exists($tmpFile['tmp_name'])) {
+    /**
+     * This method deletes a remote file from a bucket. The object to be deleted is passed in as a AWS_S3File data
+     * object.
+     *
+     * Error messages are stored in $this->errors;
+     *
+     * @param $s3file AWS_S3File
+     *
+     * @return bool true if delete was successful.
+     */
+    public function deleteRemoteObject($s3file)
+    {
+        $s3 = $this->getAWSS3Client();
+        try
+        {
+            $result = $s3->deleteObject(array(
+                'Bucket' => $s3file->Bucket,
+                'Key' => $s3file->Name
+            ));
 
-            $result = $s3Client->upload(
-                $bucket,
-                $fileName,
-                fopen($tmpFile['tmp_name'], 'r+')
-            );
+            // The array $result does not clearly state if the deletion was successful.
+            // That's why I'll check if the file still exists.
+            $exists = $this->doesObjectExist($s3file->Bucket,$s3file->Name);
+            if ($exists)
+            {
+                $this->errors[] = _t('File.DELETEFAILED', 'File has not been deleted successfully from storage.');
+                return false;
+            }
+        }
 
-            $this->file->ParentID = $parentBucket ? $parentBucket->ID : 0;
-
-            // This is to prevent it from trying to rename the file
-            $this->file->Name = $fileName;
-            $this->file->Bucket = $bucket;
-            $this->file->URL = "http://{$bucket}.s3.amazonaws.com/{$fileName}";
-            $this->file->write();
-
-            $this->file->onAfterUpload();
-            $this->extend('onAfterLoad', $this->file);   //to allow extensions to e.g. create a version after an upload
-            return true;
-        } else {
-            $this->errors[] = _t('File.NOFILESIZE', 'Filesize is zero bytes.');
+        catch(Exception $e)
+        {
+            $this->errors[] = $e->getMessage();
             return false;
         }
+        return true;
     }
+
 } 

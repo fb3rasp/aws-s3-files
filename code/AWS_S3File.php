@@ -42,6 +42,11 @@ class AWS_S3File extends DataObject
         Config::inst()->update('AWS_S3File','default_bucket',$bucket);
     }
 
+    public static function set_region($region)
+    {
+        Config::inst()->update('AWS_S3File','region',$region);
+    }
+
     /**
      * Getter for the "Filename" field. This is stored as a field for File, but here
      * it is done dynamically.
@@ -58,4 +63,26 @@ class AWS_S3File extends DataObject
     {
         $this->extend('onAfterUpload');
     }
-} 
+
+
+    /**
+     * Deletes the associated object from the remote storage.
+     *
+     * @reutrn bool true if deletion was successful
+     */
+    public function deleteRemoteObject()
+    {
+        $s3 = AWS_S3Upload::create();
+
+        if ($this->Name && $s3->doesObjectExist($this->Bucket,$this->Name))
+        {
+            $s3->deleteRemoteObject($this);
+            if ($s3->isError())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
