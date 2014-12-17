@@ -6,7 +6,8 @@
  * Time: 3:54 PM
  */
 
-class AWS_S3Bucket extends DataObject {
+class AWS_S3Bucket extends DataObject
+{
 
     private static $db = array(
         "Name" => "Varchar"
