@@ -1,0 +1,5 @@
+de:
+  File:
+    DELETEFAILED: 'Datei konnte nicht erfolgreich gelöscht werden.'
+  AWS_S3_UploadField:
+    UPLOADSINTO: "Speichern nach Amazon Storage /{path}"
