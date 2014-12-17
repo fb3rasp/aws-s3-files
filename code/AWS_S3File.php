@@ -10,14 +10,15 @@ class AWS_S3File extends DataObject
 {
 
     static $db = array(
-        "Name" => "Varchar(255)",
-        "Bucket" => "Varchar(255)",
-        "URL" => "Varchar(255)"
+        "Name"         => "Varchar(255)",
+        "Bucket"       => "Varchar(255)",
+        "URL"          => "Varchar(1024)",
+        "OriginalName" => "Varchar(255)"
     );
 
     static $has_one = array(
         "Parent" => "AWS_S3Bucket",
-        "Owner" => "Member"
+        "Owner"  => "Member"
     );
 
     /**
@@ -124,7 +125,7 @@ class AWS_S3File extends DataObject
         //
         // taken from File.Icon()
         $ext = strtolower($this->getExtension());
-        
+
         if(!Director::fileExists(FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif")) {
             $ext = File::get_app_category($this->getExtension());
         }
