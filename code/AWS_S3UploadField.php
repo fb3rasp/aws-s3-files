@@ -8,6 +8,9 @@
 
 class AWS_S3UploadField extends UploadField
 {
+    private static $allowed_actions = array(
+        'upload'
+    );
 
     protected $bucketName = false;
 
@@ -153,6 +156,42 @@ class AWS_S3UploadField extends UploadField
             $class = $record->getRelationClass($name);
             return empty($class) ? $default : $class;
         }
+    }
+
+    /**
+     * Action to handle upload of a single file
+     *
+     * @param SS_HTTPRequest $request
+     * @return SS_HTTPResponse
+     * @return SS_HTTPResponse
+     */
+    public function upload(SS_HTTPRequest $request)
+    {
+        $response = parent::upload($request);
+
+
+        /**
+         * To show error messages in the upload form field, the error messages need to be translated into a string
+         * and returned as part of the status description. General upload errors will cause a 403 status code. We use
+         * this to identify if an error occurred, get the error encoded in the response body and convert it into a string.
+         */
+        if ($response->getStatusCode()==403)
+        {
+            $body = $response->getBody();
+            $errors = json_decode($body, true);
+
+            if (is_array($errors))
+            {
+                $errorMessage = $errors[0];
+
+                if (isset($errorMessage['error']))
+                {
+                    $message = str_replace("\n",' ; ',$errorMessage['error']);
+                    $response->setStatusDescription('Forbidden - '.$message);
+                }
+            }
+        }
+        return $response;
     }
 }
 
