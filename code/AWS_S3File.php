@@ -136,5 +136,26 @@ class AWS_S3File extends DataObject
 
         return FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif";
     }
+
+    public function downloadFile(Controller $controller)
+    {
+        $s3 = AWS_S3Upload::create();
+
+        $result = $s3->downloadObject($this);
+
+        if ($result && isset($result['Body']))
+        {
+            $response = $controller->getResponse();
+            $response->addHeader('Content-Type',HTTP::get_mime_type($this->Name));
+            $response->addHeader('Content-Description','File Transfer');
+            $response->addHeader('Content-Disposition','attachment; filename="'.$this->Name.'"');
+            $response->addHeader('Content-Length',$result['ContentLength']);
+
+            $response->setBody($result['Body']);
+            return $response;
+
+        }
+        return null;
+    }
 }
 

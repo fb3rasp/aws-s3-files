@@ -283,4 +283,24 @@ class AWS_S3Upload extends Upload
         return true;
     }
 
+    public function downloadObject($s3file)
+    {
+        $s3 = $this->getAWSS3Client();
+
+        try
+        {
+            // Get the object
+            $result = $s3->getObject(array(
+                'Bucket' => $s3file->Bucket,
+                'Key' => $s3file->Name
+            ));
+        }
+
+        catch(Exception $e)
+        {
+            $this->errors[] = $e->getMessage();
+            return null;
+        }
+        return $result;
+    }
 } 
