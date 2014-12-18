@@ -1,5 +1,9 @@
 en:
-  File:
+  AWS_S3File:
+    OVERWRITENOTPERMITTED: "Could not upload file {filename} as overwrite was not granted."
+    CREATEUNIQUEFILENAME: "Filename {filename} does exist on storage. Tried to rename the file {count} times but still could not resolve the conflict. Please rename the file and try again."
     DELETEFAILED: 'File has not been deleted successfully from storage.'
+
   AWS_S3_UploadField:
     UPLOADSINTO: "uploads into Amazon Storage /{path}"
+

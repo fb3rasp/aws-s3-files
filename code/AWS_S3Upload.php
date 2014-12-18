@@ -11,6 +11,7 @@ use Aws\Common\Aws;
 
 class AWS_S3Upload extends Upload
 {
+
     protected $s3Client = null;
 
     /**
@@ -52,7 +53,7 @@ class AWS_S3Upload extends Upload
      * @return bool true if successful, otherwise false. See $this->errors for error description.
      *
      */
-    private function uploadFile($tmpFile, $fileName, $bucket)
+    private function uploadFile($bucket, $fileName, $tmpFile )
     {
         if(!file_exists($tmpFile['tmp_name']))
         {
@@ -62,6 +63,21 @@ class AWS_S3Upload extends Upload
 
         $bucketName = $bucket->Name;
         $s3Client   = $this->getAWSS3Client();
+
+        //
+        // if replace-option is not set but the file does already exist on the AWS S3 storage, then throw an error
+        if (!$this->replaceFile)
+        {
+            if ($this->doesObjectExist($bucket->Name, $fileName))
+            {
+                $this->errors[] = _t('AWS_S3File.OVERWRITENOTPERMITTED', "Could not upload file {filename} as overwrite was not granted.",
+                    array(
+                        'filename' => $fileName
+                    )
+                );
+                return false;
+            }
+        }
 
         $s3Client->upload(
             $bucketName,
@@ -78,6 +94,7 @@ class AWS_S3Upload extends Upload
         $this->file->URL          = "http://{$bucketName}.s3.amazonaws.com/{$fileName}";
         $this->file->OriginalName = $tmpFile['name'];
         $this->file->ParentID     = $bucket->ID;
+        $this->file->OwnerID      = (Member::currentUser() ? Member::currentUser()->ID : 0);
         $this->file->write();
 
         $this->file->onAfterUpload();
@@ -132,6 +149,8 @@ class AWS_S3Upload extends Upload
         $file       = $nameFilter->filter($tmpFile['name']);
         $fileName   = basename($file);
 
+        $uploadFilename = $fileName;
+
         //
         // If $this->file is null, it implies that the file updated can not be linked automatically to a relationship
         if(!$this->file)
@@ -163,45 +182,52 @@ class AWS_S3Upload extends Upload
         // if filename already exists, version the filename (e.g. test.gif to test2.gif, test2.gif to test3.gif)
         if(!$this->replaceFile)
         {
+            $fileSuffixArray = explode('.', $fileName);
+            $fileTitle       = array_shift($fileSuffixArray);
+            $fileSuffix      = !empty($fileSuffixArray)
+                ? '.' . implode('.', $fileSuffixArray)
+                : null;
 
-            /**  TODO CHECK IF FILE rEPLACES EXISTING FILE  */
-//            $fileSuffixArray = explode('.', $fileName);
-//            $fileTitle = array_shift($fileSuffixArray);
-//            $fileSuffix = !empty($fileSuffixArray)
-//                ? '.' . implode('.', $fileSuffixArray)
-//                : null;
-//
-//            // make sure files retain valid extensions
-//            $oldFilePath = $relativeFilePath;
-//            $relativeFilePath = $relativeFolderPath . $fileTitle . $fileSuffix;
-//            if($oldFilePath !== $relativeFilePath) {
-//                user_error("Couldn't fix $relativeFilePath", E_USER_ERROR);
-//            }
-//            while(file_exists("$base/$relativeFilePath")) {
-//                $i = isset($i) ? ($i+1) : 2;
-//                $oldFilePath = $relativeFilePath;
-//
-//                $pattern = '/([0-9]+$)/';
-//                if(preg_match($pattern, $fileTitle)) {
-//                    $fileTitle = preg_replace($pattern, $i, $fileTitle);
-//                } else {
-//                    $fileTitle .= $i;
-//                }
-//                $relativeFilePath = $relativeFolderPath . $fileTitle . $fileSuffix;
-//
-//                if($oldFilePath == $relativeFilePath && $i > 2) {
-//                    user_error("Couldn't fix $relativeFilePath with $i tries", E_USER_ERROR);
-//                }
-//            }
-        }
-        else
-        {
-            //
-            // Reset the ownerID to the current member when replacing files
-            $this->file->OwnerID = (Member::currentUser() ? Member::currentUser()->ID : 0);
-        }
+            $uploadFilename = $fileTitle . $fileSuffix;
+            while($this->doesObjectExist($parentBucket->Name, $uploadFilename))
+            {
+                $i = isset($i) ? ($i+1) : 2;
+                $oldFilePath = $uploadFilename;
 
-        return $this->uploadFile($tmpFile, $fileName, $parentBucket);
+                $pattern = '/([0-9]+$)/';
+                if(preg_match($pattern, $fileTitle)) {
+                    $fileTitle = preg_replace($pattern, $i, $fileTitle);
+                } else {
+                    $fileTitle .= $i;
+                }
+                $uploadFilename = $fileTitle . $fileSuffix;
+
+                if($oldFilePath == $uploadFilename && $i > 2)
+                {
+                    $this->errors[] = _t('AWS_S3File.CREATEUNIQUEFILENAME', "Filename {filename} does exist on storage. Tried to rename the file {count} times but still could not resolve the conflict. Please rename the file and try again.",
+                        array(
+                        'filename' => $file,
+                        'count' => $i
+                        )
+                    );
+                    return false;
+                }
+
+                // stop after 10 attempts and wrote error
+                if ($i > 9)
+                {
+                    $this->errors[] = _t('AWS_S3File.CREATEUNIQUEFILENAME', "Filename {filename} does exists on storage. Tried to rename the file {count} times but still could not resolve the conflict. Please rename the file and try again.",
+                        array(
+                            'filename' => $file,
+                            'count' => $i
+                        )
+                    );
+
+                    return false;
+                }
+            }
+        }
+        return $this->uploadFile($parentBucket, $uploadFilename, $tmpFile);
     }
 
 
@@ -244,7 +270,7 @@ class AWS_S3Upload extends Upload
             $exists = $this->doesObjectExist($s3file->Bucket,$s3file->Name);
             if ($exists)
             {
-                $this->errors[] = _t('File.DELETEFAILED', 'File has not been deleted successfully from storage.');
+                $this->errors[] = _t('AWS_S3File.DELETEFAILED', 'File has not been deleted successfully from storage.');
                 return false;
             }
         }
