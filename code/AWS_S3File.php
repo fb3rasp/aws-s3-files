@@ -137,6 +137,13 @@ class AWS_S3File extends DataObject
         return FRAMEWORK_DIR . "/images/app_icons/{$ext}_32.gif";
     }
 
+    /**
+     * This method fetches the body of the S3 object and creates a SS_HTTPResponse object to enable a browser to
+     * download the file.
+     *
+     * @param Controller $controller
+     * @return null|SS_HTTPResponse
+     */
     public function downloadFile(Controller $controller)
     {
         $s3 = AWS_S3Upload::create();
