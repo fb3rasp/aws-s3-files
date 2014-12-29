@@ -303,4 +303,34 @@ class AWS_S3Upload extends Upload
         }
         return $result;
     }
+
+    /**
+     * Returns an array of available bucket names.
+     *
+     * @return null
+     */
+    public function listBuckets()
+    {
+        $s3 = $this->getAWSS3Client();
+
+        try
+        {
+            // Get list of buckets
+            $result = $s3->listBuckets(array());
+        }
+
+        catch(Exception $e)
+        {
+            $this->errors[] = $e->getMessage();
+            return null;
+        }
+
+        $bucketList = array();
+        foreach ($result['Buckets'] as $bucket) {
+            $bucketList[] = $bucket['Name'];
+        }
+
+        return $bucketList;
+
+    }
 } 
