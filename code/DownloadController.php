@@ -36,7 +36,7 @@ class DownloadController extends Controller
         echo "<ul>";
         foreach($list as $item)
         {
-            echo sprintf("<li><a href='download/%s'>Download %s</a></li>", $item->ID,$item->Name);
+            echo sprintf("<li><a href='download/%s'>Download %s</a> - <a href='%s'>Direct Download</a></li>", $item->ID,$item->Name, $item->URL);
 
         }
         echo "</ul>";
