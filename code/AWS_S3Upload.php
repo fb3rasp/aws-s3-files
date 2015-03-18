@@ -79,11 +79,13 @@ class AWS_S3Upload extends Upload
             }
         }
 
-        $s3Client->upload(
-            $bucketName,
-            $fileName,
-            fopen($tmpFile['tmp_name'], 'r+')
-        );
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $s3Client->putObject(array(
+            'Bucket'        =>$bucketName,
+            'Key'           =>$fileName,
+            'SourceFile'    =>$tmpFile['tmp_name'],
+            'ContentType'   => finfo_file($finfo, $tmpFile['tmp_name'])
+        ));
 
         $this->file->ParentID = $bucket ? $bucket->ID : 0;
 
